@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>Composant web et message bus</title>
+
+		<meta name="description" content="A framework for easily creating beautiful presentations using HTML">
+		<meta name="author" content="Hakim El Hattab">
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/dcube.css" id="theme">
+
+		<!-- Code syntax highlighting -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+	</head>
+
+	<body>
+
+		<div class="reveal">
+
+			<!-- ====================== BETWEEN REVEAL AND SLIDES ====================== -->
+			<header class="left" style="position: absolute; left: 0px;"><img src="./img/logoDcube.png" /></header>
+			<!-- ====================== BETWEEN REVEAL AND SLIDES ====================== -->
+			
+			<!-- Any section element inside of this container is displayed as a slide -->
+			<div class="slides">
+				<section>
+					<h1>Composant web et message bus</h1>
+					<img style="border:none;background:none;" width="420px" src="./img/angular-bus.jpg" />
+					<p>
+						<small>Par Félix Billon</small>
+					</p>
+				</section>
+				<section>
+					<h2>Qui suis-je ?</h2>
+					<ul>
+					   <li class="fragment roll-in">Développeur web depuis plus de 5 ans.</li>
+					   <li class="fragment roll-in">ESN : <a href="http://www.dcube.fr/">Dcube</a></li>
+					   <li class="fragment roll-in">Organisateur du meetup Typescript : <a href="http://www.meetup.com/fr-FR/Paris-Typescript/">Paris TypeScript.</a></li>
+					</ul>
+				</section>
+				<section>
+					<h2>Sommaire</h2>
+				    <ol>
+					   <li class="fragment roll-in">Le message bus</li>
+					   <li class="fragment roll-in">Component + bus</li>
+					</ol>
+				</section>
+				<section>
+				<section>
+					<h2>Le message bus : kézako ?</h2>
+					<ul>
+					   <li class="fragment roll-in">Technique qui permet de faire communiquer différents composants entre eux.</li>
+					   <li class="fragment roll-in">Utilise un système de messagerie.</li>
+					   <li class="fragment roll-in">Les composants y diffusent des messages et reçoivent ceux auxquels ils sont abonnés.</li>
+					</ul>
+				</section>
+				<section>
+					<h2>Le message bus : kézako ?</h2>
+					<img style="border:none;background:none;" src="./img/service-bus.png"/>
+				</section>
+				<section>
+					<h2>Le message bus : PostalJs </h2>
+					<ul>
+					<img style="border:none;background:none;margin-left: 320px;" src="./img/postaljs.jpg"/>
+						<li class="fragment roll-in">API javascript qui permet la création d'un message bus (in-memory).</li>
+						<li class="fragment roll-in">Les composants peuvent s'abonner à des topics sur différents channels.</li>
+						<pre class="fragment roll-in"><code class="javascript" data-trim contenteditable>
+var channel = postal.channel("orders");
+							
+var subscription = channel.subscribe("item.add", function(data, envelope) {
+    /*...*/
+});
+							
+channel.publish("item.add", {
+    sku: "AZDTF4346",
+    qty: 21
+});
+						</code></pre>
+					</ul>
+				</section>
+					<section>
+						<h2>Le message bus : PostalJs vs $broadcast/$emit</h2>
+						<ul>
+							<li class="fragment roll-in">Indépendant de la hiérarchie des scopes.</li>
+							<li class="fragment roll-in">Indépendant du cycle angular ($digest).</li>
+							<li class="fragment roll-in">Log des messages qui transite, debounce, throttle, contrainte, ...</li>
+							<li class="fragment roll-in">Abonnement à des topicq génériques avec * et # ("*.changed", "Foo.#.Changed")</li>
+						</ul>
+					</section>
+					<section>
+						<h2>Le message bus : interface</h2>
+						<pre class="fragment roll-in"><code class="typescript" data-trim contenteditable>
+import ICallBack from './ICallback';
+import IEnvelope from './IEnvelope';
+	
+/**
+ * Colonne vertébrale de diffusion des messages
+ * @interface
+ */
+interface IMessageBus {
+
+	/**
+	 * Abonnement à un ou plusieurs topics
+	 * @param componentName - nom du composant abonné
+	 * @param callback - callback à éxecuter
+	 * @param topics - liste des topics
+	 */
+	subscribe(componentName: string, callback: ICallBack&lsaquo;IEnvelope&rsaquo;, ...topics: Array&lsaquo;string&rsaquo;): void;
+				
+	/**
+	 * Publication d'un message
+	 * @param topic - type du message
+	 * @param data - données
+	 */
+	publish(topic: string, data: IEnvelope): void;
+				
+	/**
+	 * Désabonnement
+	 * @param componentName - nom du composant
+	 * @param topic - topic auquel se désabonner
+	 */
+	unSubscribe(componentName: string, topic?: string): void;
+}
+			
+export default IMessageBus;
+		 
+	</code></pre>
+					</section>
+				<section>
+					<h2>Le message bus : avantage</h2>
+					<ul>
+					   <li class="fragment roll-in">Découplage des composants.</li>
+					   <li class="fragment roll-in">Facilite la prise de connaissance des différents évènements qui mutent l'état d'un composant.</li>
+					   <li class="fragment roll-in">L'état d'un composant n'est pas modifiable depuis "l'éxterieur".</li>
+					</ul>
+				</section>
+				 <section>
+					<h2>Le message bus : inconvénient</h2>
+					<ul>
+					   <li class="fragment roll-in">Peut devenir un sac de noeuds.</li>
+					   <li class="fragment roll-in">Performances de l'application dépendantes de la vitesse d'échange des messages.</li>
+					</ul>
+				</section>
+				</section>
+
+				<!-- Example of nested vertical slides -->
+				<section>
+					<section>
+					<h2>Component + bus : AngularJs et WebComponent</h2>
+					<ul>
+					   <li class="fragment roll-in">Webcomponent : Custom Element + Shadow Dom + Template + HTML import.</li>
+					   <li class="fragment roll-in">Angularjs - Custom Element : directives et components</li>
+					   <li class="fragment roll-in">Angularjs - Template : balise script contenant le html (type="text/ng-template"), modules style ng-html2js.</li>
+					   <li class="fragment roll-in">Angularjs - HTML import : ngInclude.</li>
+					   <li class="fragment roll-in">Angularjs - Shadow Dom : none.</li>
+					</ul>
+					</section>
+					<section>
+					<h2>Component + bus : custom element avec directive</h2>
+					<ul>
+					   <li class="fragment roll-in">Composant angularjs version &lsaquo; 1.5 = .directive.js + .controller.js + .html</li>
+					   	<pre class="fragment roll-in"><code class="typescript" data-trim contenteditable>
+import MyComponentController from './myComponent.controller';
+
+/**
+ * @class
+ * @classdesc Cette directive crée le composant MyComponent
+ */
+export default class MyComponent {
+
+	constructor($templateCache: ng.ITemplateCacheService) {
+
+		let directive: ng.IDirective = {};
+		directive.restrict = 'E';
+		directive.template = $templateCache.get('myComponent.html');
+
+		directive.scope = {};
+
+		directive.controller = MyComponentController;
+		directive.controllerAs = 'myComponentCtrl';
+
+		return directive;
+	}
+
+    /**
+     * Fabrique de la directive
+     */
+    static factory(): ng.IDirectiveFactory {
+       const directive: ng.IDirectiveFactory =
+          ($templateCache: ng.ITemplateCacheService) => new LogSearchResult($templateCache);
+           directive.$inject = ['$templateCache'];
+           return directive;
+       }
+}
+							
+						</code></pre>
+					 
+					</ul>
+					</section>
+					<section>
+						<h2>Component + bus : custom element avec component</h2>
+						<ul>
+							<li class="fragment roll-in">Composant angularjs version &rsaquo; 1.5 = .component.js + .html</li>
+							<pre class="fragment roll-in"><code class="typescript" data-trim contenteditable>
+/**
+ * @class
+ * @classdesc Controleur qui gère le composant MyComponent
+ */
+class MyComponentController {
+ /*...*/
+}
+
+/**
+ * @class
+ * @classdesc Cette classe crée le composant MyComponent
+ */
+export default class MyComponent {
+
+	static $inject: Array&lsaquo;string&rsaquo; = ['$scope', 'coordinatesManager'];
+
+	constructor($templateCache: ng.ITemplateCacheService) {
+
+		let componentOption: ng.IComponentOptions = {};
+
+		componentOption.template = $templateCache.get('myComponent.html');
+
+		componentOption.controller = MyComponentController;
+		componentOption.controllerAs = 'myComponentCtrl';
+
+		return componentOption;
+	}
+	
+}
+							</code></pre>
+						</ul>
+					</section>
+					<section>
+						<h2>Component + bus : etat du composant</h2>
+						<ul>
+							<li class="fragment roll-in">Problématique : afin de recevoir les messages du bus, l'entité qui gère l'état du composant doit être instanciée (et donc abonnée).</li>
+							<li class="fragment roll-in">Plusieurs solutions possibles.</li>
+						</ul>
+					</section>
+					<section>
+						<h2>Component + bus : etat du composant solution 1</h2>
+						<ul>
+							<li class="fragment roll-in">Si le composant est toujours affiché on peut s'abonner depuis son controleur.</li>
+							<li class="fragment roll-in">Au lancement de l'application l'élément est créé et son controleur est instancier.</li>
+							<li class="fragment roll-in">Si le composant n'est plus affiché au démarrage de l'application cela ne fonctionne plus...</li>
+						</ul>
+					</section>
+					<section>
+						<h2>Component + bus : etat du composant solution 2</h2>
+						<ul>
+							<li class="fragment roll-in">Créer un service qui gère l'état du composant et faire l'abonnment ici.</li>
+							<li class="fragment roll-in">Ce service est injecté dans la fonction run d'Angular afin d'être instancié/abonné dès le démarrage de l'appli.</li>
+						</ul>
+					</section>
+					<section>
+						<h2>Component + bus : etat du composant solution 3</h2>
+						<ul>
+							<li class="fragment roll-in">Créer un service qui gère l'état du composant et faire l'abonnment ici.</li>
+							<li class="fragment roll-in">Ne pas injecter le service dans la fonction run d'Angular.</li>
+							<li class="fragment roll-in">Remplacer le message bus par un Event Store.</li>
+						    <li class="fragment roll-in">A la création du composant, le service interroge le store et dépile les messages afin de créer son état.</li>
+						</ul>
+					</section>
+					<section>
+						<h2>Component + bus : mutation de l'état 1/3</h2>
+						<ul>
+							<img width="850px" style="border:none;background:none;" src="./img/service-bus2.png"/>
+						</ul>
+					</section>
+					<section>
+						<h2>Component + bus : mutation de l'état 1/3 BIS</h2>
+						<ul>
+							<img width="850px" style="border:none;background:none;" src="./img/service-bus3.png"/>
+						</ul>
+					</section>
+					<section>
+						<h2>Component + bus : mutation de l'état 1/3 TER</h2>
+						<ul>
+							<img width="850px" style="border:none;background:none;" src="./img/service-bus4.png"/>
+						</ul>
+					</section>
+					<section>
+						<h2>Component + bus : mutation de l'état 2/3</h2>
+						<ul>
+							<li class="fragment roll-in">Lorsque l'état d'un composant est modifié il publie son nouvel état sur le bus.</li>
+							<li class="fragment roll-in">Les composants qui dépendent de l'état du composant modifié reçoivent le message avec le nouvel état.</li>
+							<li class="fragment roll-in">Ces même composants mettent à jour leur état en conséquence puis publient à leur tour leur nouvel état.</li>
+						</ul>
+					</section>
+					<section>
+						<h2>Component + bus : mutation de l'état 3/3</h2>
+	                    <pre class="fragment roll-in"><code class="typescript" data-trim contenteditable>
+import IMessageBus from './Common/MessageBus/Interface/IMessageBus.service';
+import IEnvelope from './Common/MessageBus/Interface/IEnvelope';
+import IComponentAState from './IComponentAState';
+
+import * as ComponentAStateEvents from './Events';
+import * as ComponentBStateEvents from '../ComponentB/Events';
+import * as ComponentCStateEvents from '../ComponentC/Events';
+	
+/**
+ * @class
+ * @classdesc Service qui gère l'état du composant A
+ */
+export default class ComponentAStateManager {
+	
+  static className: string = "ComponentAStateManager";
+	
+  private _myState: IComponentAState = {
+     foo: 'Hello',
+     counter: 1
+  };
+  get myState(): IComponentAState {
+     return this._myState;
+  }
+
+   //dépendances
+   static $inject: Array&lsaquo;string&rsaquo; = ['$log', 'messageBus'];
+
+   /**
+    * @constructs ComponentAStateManager
+    */
+   constructor(private $log: ng.ILogService,
+      private messageBus: IMessageBus) {
+
+      this.messageBus.subscribe(ComponentAStateManager.className, (data: IEnvelope, topic: string) => {
+          switch (topic) {
+               case ComponentBStateEvents.COMPONENTB_BAR_CHANGED:
+                    let propertyBarFromB = data.state.bar;
+                    if(propertyBarFromB > 10) {
+                       this._myState.counter++;
+                       this.serviceBus.publish(ComponentAStateEvents.COMPONENTA_COUNTER_CHANGED,
+                      { state: angular.copy(this.state) });
+                    }
+                    break;
+               case ComponentCStateEvents.COMPONENTC_BAR_CHANGED:
+                    let propertyBarFromC = data.state.bar;
+                    if(propertyBarFromC < 10) {
+                      this._myState.counter++;
+                      this._myState.foo = 'Bye';
+                      this.serviceBus.publish(ComponentAStateEvents.COMPONENTA_COUNTER_CHANGED,
+                      { state: angular.copy(this.state) });
+                      this.serviceBus.publish(ComponentAStateEvents.COMPONENTA_FOO_CHANGED,
+                      { state: angular.copy(this.state) });
+                    }
+                    break;
+                case ComponentBStateEvents.COMPONENTB_FOO_CHANGED:
+                case ComponentCStateEvents.COMPONENTC_FOO_CHANGED:
+                    let propertyBarFromB = data.state.bar;
+                    let propertyBarFromC = data.state.bar;
+                    this._myState.counter--;
+                    this.serviceBus.publish(ComponentAStateEvents.COMPONENTA_COUNTER_CHANGED,
+                    { state: angular.copy(this.state) });
+                    break;
+                default:
+                    this.$log.debug('Component : ', ComponentAStateManager.className, ' ,topic non traité : ', topic);
+         }
+      },
+            ComponentBStateEvents.COMPONENTB_ADD,
+            ComponentBStateEvents.COMPONENTC_ADD,
+            ComponentBStateEvents.COMPONENTB_DELETE,
+            ComponentBStateEvents.COMPONENTC_DELETE);
+   }
+}
+		
+	                    </code></pre>
+					</section>
+					<section>
+						<h2>Component + bus : best practices</h2>
+						<ul>
+							<li class="fragment roll-in">L'état transmis par un composant doit toujours être une copie de cet état.</li>
+							<li class="fragment roll-in">Les composants doivent transmettre des états relativement petits, pas de gros composant fourre-tout !</li>
+							<li class="fragment roll-in">Le message transmis doit être le plus fin possible.</li>
+							<li class="fragment roll-in">Eviter de mixer avec d'autres patterns.</li>
+						</ul>
+					</section>
+				</section>
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+
+			// Full list of configuration options available at:
+			// https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+
+				transition: 'slide', // none/fade/slide/convex/concave/zoom
+
+				// Optional reveal.js plugins
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/highlight/highlight.js', async: true, condition: function() { return !!document.querySelector( 'pre code' ); }, callback: function() { hljs.initHighlightingOnLoad(); } },
+					{ src: 'plugin/zoom-js/zoom.js', async: true },
+					{ src: 'plugin/notes/notes.js', async: true }
+				]
+			});
+
+		</script>
+
+	</body>
+</html>
